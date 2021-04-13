@@ -1,6 +1,7 @@
 [submodule "src/xtopcom/xvm"]
 	path = src/xtopcom/xvm
 	url = git@github.com:telosprotocol/xvm.git
+	branch = dev/featute_new_contract
 [submodule "src/xtopcom/xdepends"]
 	path = src/xtopcom/xdepends
 	url = git@github.com:telosprotocol/xdepends.git
