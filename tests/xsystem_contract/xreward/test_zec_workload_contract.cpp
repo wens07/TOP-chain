@@ -1,6 +1,7 @@
 // Copyright (c) 2017-2018 Telos Foundation & contributors
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #define private public
 #include "xbase/xobject_ptr.h"
 #include "xbasic/xasio_io_context_wrapper.h"
@@ -20,6 +21,8 @@
 #include "xvm/xsystem_contracts/xworkload/xzec_workload_contract_v2.h"
 #include "xvm/xvm_service.h"
 #include "xvm/xvm_trace.h"
+#include "xvm/xsystem_contracts/xworkload/xworkload_contract_data.h"
+#include "xcodec/xmsgpack_codec.hpp"
 
 #include <gtest/gtest.h>
 
@@ -1239,7 +1242,7 @@ TEST_F(xtest_workload_contract_t, test_on_receive_workload) {
     }
 }
 
-#if 0
+#if 1
 TEST_F(xtest_workload_contract_t, test_update_workload_time) {
     auto vbstate = make_object_ptr<xvbstate_t>(sys_contract_zec_workload_addr, 1 , 1, std::string{}, std::string{}, 0, 0, 0);
     auto unitstate = std::make_shared<xunit_bstate_t>(vbstate.get());
@@ -1289,13 +1292,18 @@ TEST_F(xtest_workload_contract_t, test_update_workload_time) {
         }
 
 
+
         std::string group_workload_str;
+        xbyte_buffer_t group_workload_bytes;
         {
             xstream_t stream(xcontext_t::instance());
             MAP_OBJECT_SERIALIZE2(stream, group_workload);
             stream << int64_t(10);
             stream << uint64_t(10);
             group_workload_str = std::string((char *)stream.data(), stream.size());
+
+            group_workload_bytes = top::codec::xmsgpack_codec_t<std::map<common::xgroup_address_t, xgroup_workload_t>>::encode(group_workload);
+
         }
         {
             xstream_t stream(xcontext_t::instance());
@@ -1479,6 +1487,212 @@ TEST_F(xtest_workload_contract_t, test_on_receive_workload_time) {
     std::cout << "max rounds per second: " << max_rounds << std::endl;
     std::cout << "min rounds per second: " << min_rounds << std::endl;
 }
+
+TEST_F(xtest_workload_contract_t, test_on_receive_workload_xstream_time) {
+    auto vbstate = make_object_ptr<xvbstate_t>(sys_contract_zec_workload_addr, 1, 1, std::string{}, std::string{}, 0, 0, 0);
+    auto unitstate = std::make_shared<xunit_bstate_t>(vbstate.get());
+    auto account_context = std::make_shared<xaccount_context_t>(unitstate);
+    auto contract_helper = std::make_shared<xcontract_helper>(account_context.get(), common::xnode_id_t{sys_contract_zec_workload_addr}, m_table);
+    m_workload_contract.set_contract_helper(contract_helper);
+    m_workload_contract.setup();
+
+    uint64_t time_total = 0;
+    uint64_t second = 1;
+    uint64_t num_in_second = 0;
+    uint64_t num_total = 0;
+    uint64_t last_timestamp = 0;
+    uint64_t min_rounds = 0xffff;
+    uint64_t max_rounds = 0;
+
+    const uint32_t rounds = 100;
+
+    std::map<std::string, std::string> current_workload_data;
+    std::string tags_string;
+    for (;;) {
+        // construct data
+        top::xvm::system_contracts::xworkload_contract_data_t workload_contract_data;
+        {
+            std::map<std::string, uint32_t> w1;
+            uint64_t w1_total = 0;
+            for (auto j = 1; j <= 256; j++) {
+                auto workload = rand_num(1, 10);
+                w1[test_account[j - 1]] = workload;
+                w1_total += workload;
+            }
+            xgroup_workload_t g1;
+            g1.cluster_total_workload = w1_total;
+            g1.m_leader_count = w1;
+            workload_contract_data.group_workloads[m_group_addr1] = g1;
+        }
+        {
+            std::map<std::string, uint32_t> w1;
+            uint64_t w1_total = 0;
+            for (auto j = 1; j <= 512; j++) {
+                auto workload = rand_num(1, 10);
+                w1[test_account[j - 1]] = workload;
+                w1_total += workload;
+            }
+            xgroup_workload_t g1;
+            g1.cluster_total_workload = w1_total;
+            g1.m_leader_count = w1;
+            workload_contract_data.group_workloads[m_group_addr2] = g1;
+        }
+        workload_contract_data.height = 10;
+        workload_contract_data.tgas = 10;
+
+        xstream_t stream(xcontext_t::instance());
+        MAP_OBJECT_SERIALIZE2(stream, workload_contract_data.group_workloads);
+        stream << workload_contract_data.tgas;
+        stream << workload_contract_data.height;
+        auto const group_workload_str = std::string((char *)stream.data(), stream.size());
+
+        // contract add
+        int64_t time_s = 0;
+        int64_t time_e = 0;
+        time_s = xtime_utl::time_now_ms();
+        //for (auto x = 0; x < 5000; ++x)
+        {
+            std::map<std::string, std::string> updated_workload_data;
+            if (m_workload_contract.handle_recv_workload(group_workload_str,
+                                                         top::common::xaccount_address_t{sys_contract_sharding_statistic_info_addr + std::string{"@1"}},
+                                                         1,
+                                                         0,
+                                                         true,
+                                                         current_workload_data,
+                                                         tags_string,
+                                                         updated_workload_data)) {
+                for (auto const & data : updated_workload_data) {
+                    current_workload_data[data.first] = data.second;
+                }
+            }
+        }
+        time_e = xtime_utl::time_now_ms();
+        time_total += time_e - time_s;
+        // std::cout << "avr rounds per second: " << 5000. / ((time_e - time_s) / 1000) << std::endl;
+        num_in_second++;
+        if (time_total / 1000 >= second) {
+            std::cout << "second " << second << "(" << time_total - last_timestamp << "ms)"
+                      << ", total rounds: " << num_in_second << std::endl;
+            num_total += num_in_second;
+            if (num_in_second > max_rounds) {
+                max_rounds = num_in_second;
+            } else if (num_in_second < min_rounds) {
+                min_rounds = num_in_second;
+            }
+            if (second >= rounds) {
+                break;
+            } else {
+                num_in_second = 0;
+                second++;
+            }
+        }
+    }
+    std::cout << "avr rounds per second: " << num_total / rounds << std::endl;
+    std::cout << "max rounds per second: " << max_rounds << std::endl;
+    std::cout << "min rounds per second: " << min_rounds << std::endl;
+}
+
+
+TEST_F(xtest_workload_contract_t, test_on_receive_workload_msgpack_time) {
+    auto vbstate = make_object_ptr<xvbstate_t>(sys_contract_zec_workload_addr, 1, 1, std::string{}, std::string{}, 0, 0, 0);
+    auto unitstate = std::make_shared<xunit_bstate_t>(vbstate.get());
+    auto account_context = std::make_shared<xaccount_context_t>(unitstate);
+    auto contract_helper = std::make_shared<xcontract_helper>(account_context.get(), common::xnode_id_t{sys_contract_zec_workload_addr}, m_table);
+    m_workload_contract.set_contract_helper(contract_helper);
+    m_workload_contract.setup();
+
+    uint64_t time_total = 0;
+    uint64_t second = 1;
+    uint64_t num_in_second = 0;
+    uint64_t num_total = 0;
+    uint64_t last_timestamp = 0;
+    uint64_t min_rounds = 0xffff;
+    uint64_t max_rounds = 0;
+
+    const uint32_t rounds = 100;
+
+    std::map<std::string, std::string> current_workload_data;
+    std::string tags_string;
+    for (;;) {
+        // construct data
+        top::xvm::system_contracts::xworkload_contract_data_t workload_contract_data;
+        {
+            std::map<std::string, uint32_t> w1;
+            uint64_t w1_total = 0;
+            for (auto j = 1; j <= 256; j++) {
+                auto workload = rand_num(1, 10);
+                w1[test_account[j - 1]] = workload;
+                w1_total += workload;
+            }
+            xgroup_workload_t g1;
+            g1.cluster_total_workload = w1_total;
+            g1.m_leader_count = w1;
+            workload_contract_data.group_workloads[m_group_addr1] = g1;
+        }
+        {
+            std::map<std::string, uint32_t> w1;
+            uint64_t w1_total = 0;
+            for (auto j = 1; j <= 512; j++) {
+                auto workload = rand_num(1, 10);
+                w1[test_account[j - 1]] = workload;
+                w1_total += workload;
+            }
+            xgroup_workload_t g1;
+            g1.cluster_total_workload = w1_total;
+            g1.m_leader_count = w1;
+            workload_contract_data.group_workloads[m_group_addr2] = g1;
+        }
+        workload_contract_data.height = 10;
+        workload_contract_data.tgas = 10;
+
+        auto const & group_workloads_bytes = top::codec::msgpack_encode(workload_contract_data);
+
+        // contract add
+        int64_t time_s = 0;
+        int64_t time_e = 0;
+        time_s = xtime_utl::time_now_ms();
+        // for (auto x = 0; x < 5000; ++x)
+        {
+            std::map<std::string, std::string> updated_workload_data;
+            if (m_workload_contract.handle_recv_workload2(group_workloads_bytes,
+                                                          top::common::xaccount_address_t{sys_contract_sharding_statistic_info_addr + std::string{"@1"}},
+                                                          1,
+                                                          0,
+                                                          true,
+                                                          current_workload_data,
+                                                          tags_string,
+                                                          updated_workload_data)) {
+                for (auto const & data : updated_workload_data) {
+                    current_workload_data[data.first] = data.second;
+                }
+            }
+        }
+        time_e = xtime_utl::time_now_ms();
+        time_total += time_e - time_s;
+        //std::cout << "avr rounds per second: " << 5000. / ((time_e - time_s) / 1000) << std::endl;
+        num_in_second++;
+        if (time_total / 1000 >= second) {
+            std::cout << "second " << second << "(" << time_total - last_timestamp << "ms)"
+                      << ", total rounds: " << num_in_second << std::endl;
+            num_total += num_in_second;
+            if (num_in_second > max_rounds) {
+                max_rounds = num_in_second;
+            } else if (num_in_second < min_rounds) {
+                min_rounds = num_in_second;
+            }
+            if (second >= rounds) {
+                break;
+            } else {
+                num_in_second = 0;
+                second++;
+            }
+        }
+    }
+    std::cout << "avr rounds per second: " << num_total / rounds << std::endl;
+    std::cout << "max rounds per second: " << max_rounds << std::endl;
+    std::cout << "min rounds per second: " << min_rounds << std::endl;
+}
+
 #endif
 
 NS_END3

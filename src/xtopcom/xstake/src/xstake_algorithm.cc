@@ -252,7 +252,7 @@ int32_t xreg_node_info::do_read(base::xstream_t & stream) {
 
 std::int32_t cluster_workload_t::do_write(base::xstream_t & stream) const {
     auto const begin = stream.size();
-    stream << cluster_id;
+    // stream << cluster_id;
     stream << cluster_total_workload;
     MAP_SERIALIZE_SIMPLE(stream, m_leader_count);
     auto const end = stream.size();
@@ -261,7 +261,7 @@ std::int32_t cluster_workload_t::do_write(base::xstream_t & stream) const {
 
 std::int32_t cluster_workload_t::do_read(base::xstream_t & stream) {
     auto const begin = stream.size();
-    stream >> cluster_id;
+    // stream >> cluster_id;
     stream >> cluster_total_workload;
     MAP_DESERIALIZE_SIMPLE(stream, m_leader_count);
     auto const end = stream.size();
