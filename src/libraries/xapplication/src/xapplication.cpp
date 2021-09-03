@@ -56,7 +56,7 @@ xtop_application::xtop_application(common::xnode_id_t const & node_id, xpublic_k
     base::xvchain_t::instance().set_xdbstore(m_store.get());
     base::xvchain_t::instance().set_xevmbus(m_bus.get());
     m_blockstore.attach(store::get_vblockstore());
-    
+    m_sys_contract_mgr = top::make_unique<contract_runtime::xsystem_contract_manager_t>(make_observer(m_blockstore.get()));
     m_nodesvr_ptr = make_object_ptr<election::xvnode_house_t>(node_id, sign_key, m_blockstore, make_observer(m_bus.get()));
 #ifdef MOCK_CA
     m_cert_ptr = make_object_ptr<xschnorrcert_t>((uint32_t)1);
@@ -82,6 +82,9 @@ void xtop_application::start() {
     contract::xcontract_deploy_t::instance().deploy_sys_contracts();
     contract::xcontract_manager_t::instance().instantiate_sys_contracts();
     contract::xcontract_manager_t::instance().setup_blockchains(m_blockstore.get());
+
+    m_sys_contract_mgr->deploy();
+
     chain_data::xchain_data_processor_t::release();
     // load configuration first
     auto loader = std::make_shared<loader::xconfig_onchain_loader_t>(make_observer(m_store), make_observer(m_bus.get()), make_observer(m_logic_timer));
