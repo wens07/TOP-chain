@@ -7,6 +7,7 @@
 #include "xvledger/xvaccount.h"
 #include "xvledger/xvblockstore.h"
 #include "xvledger/xvledger.h"
+#include "xmbus/xmessage_bus.h"
 #include "tests/mock/xtestdb.hpp"
 
 namespace top
