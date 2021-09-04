@@ -50,13 +50,13 @@ xtop_application::xtop_application(common::xnode_id_t const & node_id, xpublic_k
   , m_logic_timer{make_object_ptr<time::xchain_timer_t>(m_timer_driver)}
   , m_grpc_thread{make_object_ptr<base::xiothread_t>()}
   , m_sync_thread{make_object_ptr<base::xiothread_t>()}
-  , m_elect_client{top::make_unique<elect::xelect_client_imp>()} {
+  , m_elect_client{top::make_unique<elect::xelect_client_imp>()}
+  , m_sys_contract_mgr{top::make_unique<contract_runtime::xsystem_contract_manager_t>()} {
     std::shared_ptr<db::xdb_face_t> db = db::xdb_factory_t::instance(XGET_CONFIG(db_path));
     m_store = store::xstore_factory::create_store_with_static_kvdb(db);
     base::xvchain_t::instance().set_xdbstore(m_store.get());
     base::xvchain_t::instance().set_xevmbus(m_bus.get());
     m_blockstore.attach(store::get_vblockstore());
-    m_sys_contract_mgr = top::make_unique<contract_runtime::xsystem_contract_manager_t>(make_observer(m_blockstore.get()));
     m_nodesvr_ptr = make_object_ptr<election::xvnode_house_t>(node_id, sign_key, m_blockstore, make_observer(m_bus.get()));
 #ifdef MOCK_CA
     m_cert_ptr = make_object_ptr<xschnorrcert_t>((uint32_t)1);
