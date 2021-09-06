@@ -165,6 +165,9 @@ xblock_ptr_t        xfulltable_builder_t::build_block(const xblock_ptr_t & prev_
 
     int64_t tgas_balance_change_total = 0;
     for(auto & block : blocks) {
+        if (block->is_fullblock()) {
+            continue;
+        }
         auto out_entity = block->get_output()->get_primary_entity();
         if (out_entity != nullptr) {
             int64_t tgas_balance_change = base::xstring_utl::toint64(out_entity->query_value(base::xvoutentity_t::key_name_tgas_pledge_change()));
