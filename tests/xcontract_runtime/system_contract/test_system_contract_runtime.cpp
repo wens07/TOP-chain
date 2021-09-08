@@ -1,7 +1,8 @@
 
 #include "xbase/xobject_ptr.h"
 #include "xblockstore/xblockstore_face.h"
-#include "xcontract_runtime/xsystem/xsystem_action_runtime.h"
+#include "xsystem_contract_runtime/xsystem_action_runtime.h"
+#include "xsystem_contracts/xsystem_contract_addresses.h"
 #include "xcontract_common/xproperties/xproperty_access_control.h"
 #include "xcontract_common/xcontract_state.h"
 #include "xdata/xblocktool.h"
@@ -20,18 +21,18 @@
 #include <memory>
 
 #define private public
-#include "xcontract_runtime/xsystem_contract_manager.h"
+#include "xsystem_contract_runtime/xsystem_contract_manager.h"
 
 NS_BEG3(top, tests, contract_runtime)
 
 using namespace top::contract_common;
 using namespace top::contract_runtime;
-std::string const contract_address = "T200024uDhihoPJ24LQL4znxrugPM4eWk8rY42ceS";
+std::string const contract_address = system_contracts::transfer_address;
 
 
 class test_system_contract_runtime : public testing::Test {
 protected:
-    std::unique_ptr<top::contract_runtime::xsystem_contract_manager_t> system_contract_manager_{};
+    std::unique_ptr<top::contract_runtime::system::xsystem_contract_manager_t> system_contract_manager_{};
     top::xobject_ptr_t<top::base::xvbstate_t> bstate_{};
     std::shared_ptr<top::contract_common::properties::xproperty_access_control_t> property_access_control_{};
     std::shared_ptr<top::contract_common::xcontract_state_t> contract_state_{};
@@ -48,6 +49,7 @@ void test_system_contract_runtime::SetUp()  {
     bstate_.attach(new top::base::xvbstate_t{contract_address, (uint64_t)1, (uint64_t)1, std::string(), std::string(), (uint64_t)0, (uint32_t)0, (uint16_t)0});
     property_access_control_ = std::make_shared<top::contract_common::properties::xproperty_access_control_t>(top::make_observer(bstate_.get()), top::state_accessor::xstate_access_control_data_t{});
     contract_state_ = std::make_shared<top::contract_common::xcontract_state_t>(top::common::xaccount_address_t{contract_address}, top::make_observer(property_access_control_.get()));
+    system_contract_manager_ = top::make_unique<top::contract_runtime::system::xsystem_contract_manager_t>();
     contract_runtime_ = top::make_unique<top::contract_runtime::system::xsystem_action_runtime_t>(top::make_observer(system_contract_manager_.get()));
 }
 
@@ -59,6 +61,11 @@ void test_system_contract_runtime::TearDown() {
 
 
 TEST_F(test_system_contract_runtime, run_system_contract) {
+    mock::xvchain_creator creator;
+    base::xvblockstore_t* blockstore = creator.get_blockstore();
+
+    system_contract_manager_->initialize(blockstore);
+    system_contract_manager_->deploy_system_contract<system_contracts::xtop_transfer_contract>(common::xaccount_address_t{contract_address}, xblock_sniff_config_t{}, system::contract_deploy_type_t::rec, common::xnode_type_t::zec, system::contract_broadcast_policy_t::invalid);
     state_accessor::properties::xproperty_identifier_t propety_identifier("balance", state_accessor::properties::xproperty_type_t::token, state_accessor::properties::xenum_property_category::system);
 
     auto transfer_tx = top::make_object_ptr<top::data::xtransaction_t>();
@@ -83,9 +90,8 @@ TEST_F(test_system_contract_runtime, deploy_system_contract) {
     mock::xvchain_creator creator;
     base::xvblockstore_t* blockstore = creator.get_blockstore();
 
-    contract_runtime::xsystem_contract_manager_t manager;
-    manager.initialize(blockstore);
-    manager.deploy_system_contract<system_contracts::xtop_transfer_contract>(common::xaccount_address_t{contract_address}, xblock_sniff_config_t{}, contract_deploy_type_t::rec, common::xnode_type_t::zec, contract_broadcast_policy_t::invalid);
+    system_contract_manager_->initialize(blockstore);
+    system_contract_manager_->deploy_system_contract<system_contracts::xtop_transfer_contract>(common::xaccount_address_t{contract_address}, xblock_sniff_config_t{}, system::contract_deploy_type_t::rec, common::xnode_type_t::zec, system::contract_broadcast_policy_t::invalid);
 
     auto latest_vblock = data::xblocktool_t::get_latest_committed_lightunit(blockstore, contract_address);
     base::xauto_ptr<base::xvbstate_t> bstate = base::xvchain_t::instance().get_xstatestore()->get_blkstate_store()->get_block_state(latest_vblock.get(), metrics::statestore_access_from_application_isbeacon);
