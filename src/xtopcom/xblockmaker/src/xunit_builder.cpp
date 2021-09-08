@@ -17,6 +17,9 @@
 // #include "xcontract_runtime/xaccount_vm.h"
 #include "xdata/xblockbuild.h"
 
+#include "xcontract_runtime/xsystem_contract_manager.h"
+#include "xcontract_runtime/xaccount_vm.h"
+
 NS_BEG2(top, blockmaker)
 
 xlightunit_builder_t::xlightunit_builder_t() {
@@ -49,6 +52,22 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
     xassert(lightunit_build_para != nullptr);
 
     const std::vector<xcons_transaction_ptr_t> & input_txs = lightunit_build_para->get_origin_txs();
+
+#if 0
+    {
+        xassert(!cs_para.get_table_account().empty());
+        xassert(cs_para.get_table_proposal_height() > 0);
+        xassert(!cs_para.get_random_seed().empty());
+
+        auto _temp_header = base::xvblockbuild_t::build_proposal_header(prev_block.get());
+        auto proposal_bstate = make_object_ptr<base::xvbstate_t>(*_temp_header.get(), *prev_bstate.get());
+
+        auto temp_manager = make_unique<contract_runtime::xsystem_contract_manager_t>();
+        contract_runtime::xaccount_vm_t vm(temp_manager);
+        auto result = vm.execute(input_txs, proposal_bstate, cs_para);
+    }
+#endif
+
     txexecutor::xbatch_txs_result_t exec_result;
     int exec_ret = txexecutor::xtransaction_executor::exec_batch_txs(prev_block.get(), prev_bstate, cs_para, input_txs, exec_result);
     xinfo("xlightunit_builder_t::build_block %s,account=%s,height=%ld,exec_ret=%d,succtxs_count=%zu,failtxs_count=%zu,unconfirm_count=%d,binlog_size=%zu,binlog=%ld,state_size=%zu",
