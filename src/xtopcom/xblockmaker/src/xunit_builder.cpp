@@ -17,8 +17,8 @@
 // #include "xcontract_runtime/xaccount_vm.h"
 #include "xdata/xblockbuild.h"
 
-#include "xcontract_runtime/xsystem_contract_manager.h"
-#include "xcontract_runtime/xaccount_vm.h"
+// #include "xcontract_runtime/xsystem_contract_manager.h"
+// #include "xcontract_runtime/xaccount_vm.h"
 
 NS_BEG2(top, blockmaker)
 
@@ -51,7 +51,6 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
     xassert(lightunit_build_para != nullptr);
 
     const std::vector<xcons_transaction_ptr_t> & input_txs = lightunit_build_para->get_origin_txs();
-
 #if 0
     {
         xassert(!cs_para.get_table_account().empty());
