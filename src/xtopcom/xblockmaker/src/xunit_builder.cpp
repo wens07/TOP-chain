@@ -39,7 +39,7 @@ xblock_ptr_t xlightunit_builder_t::create_block(const xblock_ptr_t & prev_block,
     base::xvblock_t* _proposal_block = data::xblocktool_t::create_next_lightunit(lightunit_para, prev_block.get(), cs_para);
     xblock_ptr_t proposal_unit;
     proposal_unit.attach((data::xblock_t*)_proposal_block);
-    return proposal_unit;    
+    return proposal_unit;
 }
 
 xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_block,
@@ -52,13 +52,25 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
 
     const std::vector<xcons_transaction_ptr_t> & input_txs = lightunit_build_para->get_origin_txs();
 
-    if (input_txs.size() == 1 && 
+    std::vector<xcons_transaction_ptr_t> regist_input_txs;
+    for (auto it = input_txs.begin(); it != input_txs.end(); ++it) {
+        auto const tx = *it;
+        xinfo("new xlightunit_builder_t::build_block; alltxs src addr %s, dst addr %s, tx subtype: %s", tx->get_source_addr().c_str(), tx->get_target_addr().c_str(), tx->get_tx_subtype_str().c_str());
+         if (tx->get_source_addr().find("T8") != std::string::npos && tx->get_target_addr() == sys_contract_rec_registration_addr) {
+             xinfo("new xlightunit_builder_t::build_block; src addr %s, dst addr %s", tx->get_source_addr().c_str(), tx->get_target_addr().c_str());
+             regist_input_txs.push_back(tx);
+        }
+    }
+
+
+    if ((input_txs.size() == 1 &&
         input_txs[0]->get_tx_subtype() == base::enum_transaction_subtype_recv &&
-        input_txs[0]->get_transaction()->get_target_addr() == sys_contract_rec_standby_pool_addr) {
+        input_txs[0]->get_transaction()->get_target_addr() == sys_contract_rec_standby_pool_addr) || (!regist_input_txs.empty() && regist_input_txs[0]->get_tx_subtype() == base::enum_transaction_subtype_recv)) {
         xassert(!cs_para.get_table_account().empty());
         xassert(!cs_para.get_random_seed().empty());
         xassert(cs_para.get_table_proposal_height() > 0);
 
+        xinfo("new xlightunit_builder_t::build_block; regist_input_txs size: %u", regist_input_txs.size());
         auto system_contract_manager = make_unique<contract_runtime::system::xsystem_contract_manager_t>();
         system_contract_manager.reset(&contract_runtime::system::xsystem_contract_manager_t::instance());
         xassert(system_contract_manager != nullptr);
@@ -67,7 +79,7 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
 
         contract_vm::xaccount_vm_t vm(system_contract_manager);
         auto result = vm.execute(input_txs, proposal_bstate, cs_para);
-        
+
         size_t last_success_index = 0;
         for (auto i = 0u; i < result.transaction_results.size(); i++) {
             auto const & r = result.transaction_results[i];
@@ -86,8 +98,9 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
             }
         }
         if (result.status.ec) {
-            build_para->set_error_code(xblockmaker_error_tx_execute);
-            return nullptr;
+            xinfo("new xlightunit_builder_t::build_block; ec value: %d, ec string: %s", result.status.ec.value(), result.status.ec.category().name());
+            // build_para->set_error_code(xblockmaker_error_tx_execute);
+            // return nullptr;
         }
 
         // lightunit_build_para->set_pack_txs(input_txs);
