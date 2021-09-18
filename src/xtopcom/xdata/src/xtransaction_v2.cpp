@@ -330,6 +330,7 @@ void xtransaction_v2_t::set_action_type() {
         break;
     
     case xtransaction_type_run_contract:
+    case xtransaction_type_run_contract_new:
         m_source_action.set_action_type(xaction_type_asset_out);
         m_target_action.set_action_type(xaction_type_run_contract);
         break;
