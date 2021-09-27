@@ -20,12 +20,14 @@
 #include "xstore/xstore_face.h"
 #include "xtxstore/xtxstore_face.h"
 #include "xsync/xsync_object.h"
+#include "xsystem_contract_runtime/xsystem_contract_manager.h"
 #include "xtxpool_service_v2/xtxpool_service_face.h"
 #include "xtxpool_v2/xtxpool_face.h"
 #include "xunit_service/xcons_face.h"
 #include "xvnetwork/xvnetwork_driver_face.h"
 #include "xvnode/xbasic_vnode.h"
 #include "xvnode/xvnode_face.h"
+#include "xvnode/xvnode_sniff_config.h"
 
 #include <memory>
 
@@ -55,6 +57,8 @@ private:
 
     // observer_ptr<xunit_service::xcons_service_mgr_face> m_cons_mgr;
     xtxpool_service_v2::xtxpool_proxy_face_ptr m_txpool_face;
+
+    observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
 
 public:
     xtop_vnode(xtop_vnode const &) = delete;
@@ -107,6 +111,7 @@ public:
     void start() override;
     void fade() override;
     void stop() override;
+    xvnode_sniff_config_t sniff_config();
 
 private:
     void new_driver_added();
