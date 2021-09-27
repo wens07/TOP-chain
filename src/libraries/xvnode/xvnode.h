@@ -4,10 +4,12 @@
 
 #pragma once
 
-#include "xbasic/xmemory.hpp"
 #include "xbase/xobject_ptr.h"
+#include "xbasic/xmemory.hpp"
+#include "xbasic/xtimer_driver_fwd.h"
 #include "xchain_timer/xchain_timer.h"
 #include "xdata/xchain_param.h"
+#include "xdata/xtransaction_cache.h"
 #include "xelect_net/include/elect_main.h"
 #include "xelection/xcache/xgroup_element.h"
 #include "xgrpc_mgr/xgrpc_mgr.h"
@@ -17,15 +19,15 @@
 #include "xrpc/xrpc_init.h"
 #include "xstore/xstore_face.h"
 #include "xsync/xsync_object.h"
-#include "xtxpool_v2/xtxpool_face.h"
+#include "xsystem_contract_runtime/xsystem_contract_manager.h"
+#include "xtxexecutor/xtransaction_prepare_mgr.h"
 #include "xtxpool_service_v2/xtxpool_service_face.h"
+#include "xtxpool_v2/xtxpool_face.h"
 #include "xunit_service/xcons_face.h"
 #include "xvnetwork/xvnetwork_driver_face.h"
 #include "xvnode/xbasic_vnode.h"
 #include "xvnode/xvnode_face.h"
-#include "xtxexecutor/xtransaction_prepare_mgr.h"
-#include "xbasic/xtimer_driver_fwd.h"
-#include "xdata/xtransaction_cache.h"
+#include "xvnode/xvnode_sniff_config.h"
 
 #include <memory>
 
@@ -58,6 +60,15 @@ private:
     observer_ptr<top::xbase_timer_driver_t> m_timer_driver;
     std::shared_ptr<txexecutor::xtransaction_prepare_mgr>      m_tx_prepare_mgr;
     std::shared_ptr<data::xtransaction_cache_t> m_transaction_cache;
+
+    observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
+
+    struct xtop_vnode_role_config {
+        contract_runtime::system::xcontract_deployment_data_t m_role_config;
+        std::map<common::xaccount_address_t, uint64_t> m_address_round;   // record address and timer round
+    };
+    using xvnode_role_config_t = xtop_vnode_role_config;
+    std::map<common::xaccount_address_t, xvnode_role_config_t> m_role_data; 
 
 public:
     xtop_vnode(xtop_vnode const &) = delete;
@@ -110,6 +121,7 @@ public:
     void start() override;
     void fade() override;
     void stop() override;
+    xvnode_sniff_config_t sniff_config();
 
 private:
     void new_driver_added();
@@ -120,6 +132,14 @@ private:
     void sync_remove_vnet();
     void update_tx_cache_service();
     void update_block_prune();
+
+    void set_role_data();
+    bool sniff_broadcast(xobject_ptr_t<base::xvblock_t> const & vblock);
+    bool sniff_timer(xobject_ptr_t<base::xvblock_t> const & vblock);
+    bool sniff_block(xobject_ptr_t<base::xvblock_t> const & vblock);
+
+    bool is_valid_timer_call(common::xaccount_address_t const & address, xvnode_role_config_t & data, const uint64_t height) const;
+    void call(common::xaccount_address_t const & address, std::string const & action_name, std::string const & action_params, const uint64_t timestamp);
 };
 
 using xvnode_t = xtop_vnode;
