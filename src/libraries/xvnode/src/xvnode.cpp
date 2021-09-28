@@ -4,7 +4,9 @@
 
 #include "xvnode/xvnode.h"
 
+#include "xdata/xfull_tableblock.h"
 #include "xmbus/xevent_role.h"
+#include "xvm/manager/xcontract_address_map.h"
 #include "xvm/manager/xcontract_manager.h"
 #include "xvnetwork/xvnetwork_driver.h"
 #include "xvnode/xerror/xerror.h"
@@ -30,7 +32,8 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
                        observer_ptr<xtxpool_service_v2::xtxpool_service_mgr_face> const & txpool_service_mgr,
                        observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                        observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
-                       observer_ptr<xbase_timer_driver_t> const & timer_driver)
+                       observer_ptr<xbase_timer_driver_t> const & timer_driver,
+                       xobject_ptr_t<base::xvnodesrv_t> const & nodesvr)
   : xbasic_vnode_t{common::xnode_address_t{sharding_address,
                                            common::xaccount_election_address_t{vhost->host_node_id(), slot_id},
                                            election_round,
@@ -56,6 +59,7 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
         joined_election_round)}
   , m_timer_driver{timer_driver}
   , m_tx_prepare_mgr{nullptr}
+  , m_nodesvr{nodesvr}
   , m_system_contract_manager{make_observer(contract_runtime::system::xsystem_contract_manager_t::instance())} {
     bool is_edge_archive = common::has<common::xnode_type_t::storage>(m_the_binding_driver->type()) || common::has<common::xnode_type_t::edge>(m_the_binding_driver->type());
     bool is_frozen = common::has<common::xnode_type_t::frozen>(m_the_binding_driver->type());
@@ -89,7 +93,8 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
                        observer_ptr<xtxpool_service_v2::xtxpool_service_mgr_face> const & txpool_service_mgr,
                        observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                        observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
-                       observer_ptr<xbase_timer_driver_t> const & timer_driver)
+                       observer_ptr<xbase_timer_driver_t> const & timer_driver,
+                       xobject_ptr_t<base::xvnodesrv_t> const & nodesvr)
   : xtop_vnode{elect_main,
                group_info->node_element(vhost->host_node_id())->address().sharding_address(),
                group_info->node_element(vhost->host_node_id())->slot_id(),
@@ -109,7 +114,8 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
                txpool_service_mgr,
                txpool,
                election_cache_data_accessor,
-               timer_driver} {}
+               timer_driver,
+               nodesvr} {}
 
 std::shared_ptr<vnetwork::xvnetwork_driver_face_t> const & xtop_vnode::vnetwork_driver() const noexcept {
     return m_the_binding_driver;
@@ -287,7 +293,7 @@ void xtop_vnode::set_role_data() {
     if (common::has<common::xnode_type_t::consensus_auditor>(type)) {
         xdbg("[xtop_vnode::get_roles_data] add all sharding contracts' rcs");
         type = common::xnode_type_t::consensus_validator;
-        disable_broadcasts = false;
+        disable_broadcasts = true;
     }
 
     auto const & system_contract_deployment_data = m_system_contract_manager->deployment_data();
@@ -307,11 +313,16 @@ void xtop_vnode::set_role_data() {
     }
 #if defined(DEBUG)
     for (auto const & data_pair : m_role_data) {
-        printf("address: %s, driver type: %d\n", data_pair.first.c_str(), m_the_binding_driver->type());
+        xdbg("address: %s, driver type: %d", data_pair.first.c_str(), m_the_binding_driver->type());
         auto const & data = data_pair.second;
-        printf("contract: %p, node type: %d, sniff type: %d, broadcast: %d, %d, timer: %d, action: %s\n", &data.m_role_config.m_system_contract, data.m_role_config.m_node_type, data.m_role_config.m_sniff_type,
-            data.m_role_config.m_broadcast_config.m_type, data.m_role_config.m_broadcast_config.m_policy,
-            data.m_role_config.m_timer_config.m_interval, data.m_role_config.m_timer_config.m_action.c_str());
+        xdbg("contract: %p, node type: %d, sniff type: %d, broadcast: %d, %d, timer: %d, action: %s",
+             &data.m_role_config.m_system_contract,
+             data.m_role_config.m_node_type,
+             data.m_role_config.m_sniff_type,
+             data.m_role_config.m_broadcast_config.m_type,
+             data.m_role_config.m_broadcast_config.m_policy,
+             data.m_role_config.m_timer_config.m_interval,
+             data.m_role_config.m_timer_config.m_action.c_str());
     }
 #endif
 }
@@ -342,7 +353,6 @@ bool xtop_vnode::sniff_broadcast(xobject_ptr_t<base::xvblock_t> const & vblock) 
 
 bool xtop_vnode::sniff_timer(xobject_ptr_t<base::xvblock_t> const & vblock) {
     auto const height = vblock->get_height();
-    auto const timestamp = vblock->get_cert()->get_gmtime();
     for (auto & role_data_pair : m_role_data) {
         auto const & contract_address = role_data_pair.first;
         auto const & config = role_data_pair.second.m_role_config;
@@ -352,20 +362,58 @@ bool xtop_vnode::sniff_timer(xobject_ptr_t<base::xvblock_t> const & vblock) {
         xdbg("[xtop_vnode::sniff_timer] block address: %s, height: %" PRIu64, vblock->get_account().c_str(), vblock->get_height());
         assert(common::xaccount_address_t{vblock->get_account()} == common::xaccount_address_t{sys_contract_beacon_timer_addr});
         auto valid = is_valid_timer_call(contract_address, role_data_pair.second, height);
-        xdbg("[xtop_vnode::sniff_timer] ==== get timer2 transaction %s, %llu, %u, %d", contract_address.c_str(), height, config.m_timer_config.m_interval, valid);
-        printf("[xtop_vnode::sniff_timer] ==== get timer2 transaction %s, %lu, %u, %d\n", contract_address.c_str(), height, config.m_timer_config.m_interval, valid);
-
-        if (valid) {
-            base::xstream_t stream(base::xcontext_t::instance());
-            stream << height;
-            std::string action_params = std::string((char *)stream.data(), stream.size());
-            call(contract_address, config.m_timer_config.m_action, action_params, timestamp);
+        xdbg("[xtop_vnode::sniff_timer] contract address %s, interval: %u, valid: %d", contract_address.c_str(), config.m_timer_config.m_interval, valid);
+        if (!valid) {
+            return false;
         }
+        base::xstream_t stream(base::xcontext_t::instance());
+        stream << height;
+        std::string action_params = std::string((char *)stream.data(), stream.size());
+        xdbg("[xtop_vnode::sniff_timer] make tx, action: %s, params: %s", config.m_timer_config.m_action.c_str(), action_params.c_str());
+        call(contract_address, config.m_timer_config.m_action, action_params, vblock->get_cert()->get_gmtime());
     }
     return true;
 }
 
 bool xtop_vnode::sniff_block(xobject_ptr_t<base::xvblock_t> const & vblock) {
+    auto const & block_address = vblock->get_account();
+    auto const height = vblock->get_height();
+    for (auto & role_data_pair : m_role_data) {
+        auto const & contract_address = role_data_pair.first;
+        auto const & config = role_data_pair.second.m_role_config;
+        if ((static_cast<uint32_t>(contract_runtime::xsniff_type_t::block) & static_cast<uint32_t>(config.m_sniff_type)) == 0) {
+            continue;
+        }
+
+        // table upload contract sniff sharding table addr
+        if ((block_address.find(sys_contract_sharding_table_block_addr) != std::string::npos) && (contract_address.value() == sys_contract_sharding_statistic_info_addr)) {
+            xdbg("[xtop_vnode::sniff_block] sniff block match, contract: %s, block: %s, height: %" PRIu64, contract_address.c_str(), block_address.c_str(), height);
+            return true;
+            auto const full_tableblock = (dynamic_cast<xfull_tableblock_t *>(vblock.get()));
+            auto const fulltable_statisitc_data_str = full_tableblock->get_table_statistics_string();
+
+            base::xstream_t stream(base::xcontext_t::instance());
+            stream << fulltable_statisitc_data_str;
+            stream << height;
+            stream << full_tableblock->get_pledge_balance_change_tgas();
+            std::string action_params = std::string((char *)stream.data(), stream.size());
+            uint32_t table_id = 0;
+            auto result = xdatautil::extract_table_id_from_address(block_address, table_id);
+            assert(result);
+            {
+                // table id check
+                auto const & driver_ids = m_the_binding_driver->table_ids();
+                auto result = find(driver_ids.begin(), driver_ids.end(), table_id);
+                if (result == driver_ids.end()) {
+                    return false;
+                }
+            }
+            auto const & table_address = contract::xcontract_address_map_t::calc_cluster_address(contract_address, table_id);
+
+            XMETRICS_GAUGE(metrics::xmetircs_tag_t::contract_table_fullblock_event, 1);
+            call(table_address, config.m_block_config.m_action, action_params, vblock->get_cert()->get_gmtime());
+        }
+    }
     return true;
 }
 
@@ -387,10 +435,8 @@ bool xtop_vnode::is_valid_timer_call(common::xaccount_address_t const & address,
     assert(interval > 0);
     if (interval != 0 && height != 0 && ((is_first_block && (height % 3) == 0) || (!is_first_block && (height % interval) == 0))) {
         xdbg("[xtop_vnode::is_valid_timer_call] param check pass, interval: %u, height: %llu, first_block: %d", interval, height, is_first_block);
-        printf("[xtop_vnode::is_valid_timer_call] param check pass, interval: %u, height: %lu, first_block: %d\n", interval, height, is_first_block);
     } else {
         xdbg("[xtop_vnode::is_valid_timer_call] param check not pass, interval: %u, height: %llu, first_block: %d", interval, height, is_first_block);
-        printf("[xtop_vnode::is_valid_timer_call] param check not pass, interval: %u, height: %lu, first_block: %d\n", interval, height, is_first_block);
         return false;
     }
 
@@ -401,7 +447,6 @@ bool xtop_vnode::is_valid_timer_call(common::xaccount_address_t const & address,
         return true;
     } else {
         xwarn("[xtop_vnode::is_valid_timer_call] address %s height check error, last height: %llu, this height : %llu", address.c_str(), round[address], height);
-        printf("[xtop_vnode::is_valid_timer_call] address %s height check error, last height: %lu, this height : %lu\n", address.c_str(), round[address], height);
         return false;
     }
 }
@@ -410,7 +455,6 @@ void xtop_vnode::call(common::xaccount_address_t const & address, std::string co
     xproperty_asset asset_out{0};
     auto tx = make_object_ptr<xtransaction_v2_t>();
 
-    printf("tx, address: %s, action_name: %s", address.value().c_str(), action_name.c_str());
     tx->make_tx_run_contract(asset_out, action_name, action_params);
     tx->set_same_source_target_address(address.value());
     xaccount_ptr_t account = m_store->query_account(address.value());
@@ -423,9 +467,35 @@ void xtop_vnode::call(common::xaccount_address_t const & address, std::string co
 
     int32_t r = m_txpool_face->request_transaction_consensus(tx, true);
     xinfo("[xrole_context_t] call_contract in consensus mode with return code : %d, %s, %s %s %ld, %lld",
+          r,
+          tx->get_digest_hex_str().c_str(),
+          address.value().c_str(),
+          data::to_hex_str(account->account_send_trans_hash()).c_str(),
+          account->account_send_trans_number(),
+          timestamp);
+}
+
+void xtop_vnode::call(common::xaccount_address_t const & source_address,
+                      common::xaccount_address_t const & target_address,
+                      std::string const & action_name,
+                      std::string const & action_params,
+                      uint64_t timestamp) {
+    auto tx = make_object_ptr<xtransaction_v2_t>();
+    tx->make_tx_run_contract(action_name, action_params);
+    tx->set_different_source_target_address(source_address.value(), target_address.value());
+    xaccount_ptr_t account = m_store->query_account(source_address.value());
+    assert(account != nullptr);
+    tx->set_last_trans_hash_and_nonce(account->account_send_trans_hash(), account->account_send_trans_number());
+    tx->set_fire_timestamp(timestamp);
+    tx->set_expire_duration(300);
+    tx->set_digest();
+    tx->set_len();
+
+    int32_t r = m_txpool_face->request_transaction_consensus(tx, true);
+    xinfo("[xrole_context_t::fulltableblock_event] call_contract in consensus mode with return code : %d, %s, %s %s %ld, %lld",
             r,
             tx->get_digest_hex_str().c_str(),
-            address.value().c_str(),
+            source_address.c_str(),
             data::to_hex_str(account->account_send_trans_hash()).c_str(),
             account->account_send_trans_number(),
             timestamp);

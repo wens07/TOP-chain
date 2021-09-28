@@ -61,8 +61,9 @@ private:
     std::shared_ptr<txexecutor::xtransaction_prepare_mgr>      m_tx_prepare_mgr;
     std::shared_ptr<data::xtransaction_cache_t> m_transaction_cache;
 
+    xobject_ptr_t<base::xvnodesrv_t> m_nodesvr;
     observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
-
+    
     struct xtop_vnode_role_config {
         contract_runtime::system::xcontract_deployment_data_t m_role_config;
         std::map<common::xaccount_address_t, uint64_t> m_address_round;   // record address and timer round
@@ -91,7 +92,8 @@ public:
                observer_ptr<xtxpool_service_v2::xtxpool_service_mgr_face> const & txpool_service_mgr,
                observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
-               observer_ptr<xbase_timer_driver_t> const & timer_driver);
+               observer_ptr<xbase_timer_driver_t> const & timer_driver,
+               xobject_ptr_t<base::xvnodesrv_t> const & nodesvr);
 
     xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
                common::xsharding_address_t const & sharding_address,
@@ -112,7 +114,8 @@ public:
                observer_ptr<xtxpool_service_v2::xtxpool_service_mgr_face> const & txpool_service_mgr,
                observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
-               observer_ptr<xbase_timer_driver_t> const & timer_driver);
+               observer_ptr<xbase_timer_driver_t> const & timer_driver,
+               xobject_ptr_t<base::xvnodesrv_t> const & nodesvr);
 
     std::shared_ptr<vnetwork::xvnetwork_driver_face_t> const & vnetwork_driver() const noexcept;
 
@@ -140,6 +143,11 @@ private:
 
     bool is_valid_timer_call(common::xaccount_address_t const & address, xvnode_role_config_t & data, const uint64_t height) const;
     void call(common::xaccount_address_t const & address, std::string const & action_name, std::string const & action_params, const uint64_t timestamp);
+    void call(common::xaccount_address_t const & source_address,
+              common::xaccount_address_t const & target_address,
+              std::string const & action_name,
+              std::string const & action_params,
+              uint64_t timestamp);
 };
 
 using xvnode_t = xtop_vnode;
