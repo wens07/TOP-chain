@@ -44,7 +44,7 @@ private:
     observer_ptr<sync::xsync_object_t> m_sync_obj;
     observer_ptr<grpcmgr::xgrpc_mgr_t> m_grpc_mgr;
     observer_ptr<xtxpool_v2::xtxpool_face_t> m_txpool;
-    
+
     observer_ptr<data::xdev_params> m_dev_params;
     observer_ptr<data::xuser_params> m_user_params;
 
@@ -60,9 +60,8 @@ private:
     std::shared_ptr<txexecutor::xtransaction_prepare_mgr>      m_tx_prepare_mgr;
     std::shared_ptr<data::xtransaction_cache_t> m_transaction_cache;
 
-    observer_ptr<base::xvnodesrv_t> m_nodesvr;
     // observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
-    
+
     std::unique_ptr<xtop_vnode_sniff> m_sniff;
 
 public:
