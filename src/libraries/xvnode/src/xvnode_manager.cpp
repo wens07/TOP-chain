@@ -36,7 +36,7 @@ xtop_vnode_manager::xtop_vnode_manager(observer_ptr<elect::ElectMain> const & el
                                        observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                                        observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
                                        observer_ptr<xbase_timer_driver_t> const & timer_driver,
-                                       xobject_ptr_t<base::xvnodesrv_t> const & nodesvr)
+                                       observer_ptr<base::xvnodesrv_t> const & nodesvr)
   : xtop_vnode_manager{logic_timer,
                        vhost,
                        top::make_unique<xvnode_factory_t>(elect_main,

@@ -33,7 +33,7 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
                        observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                        observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
                        observer_ptr<xbase_timer_driver_t> const & timer_driver,
-                       xobject_ptr_t<base::xvnodesrv_t> const & nodesvr)
+                       observer_ptr<base::xvnodesrv_t> const & nodesvr)
   : xbasic_vnode_t{common::xnode_address_t{sharding_address,
                                            common::xaccount_election_address_t{vhost->host_node_id(), slot_id},
                                            election_round,
@@ -94,7 +94,7 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
                        observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                        observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
                        observer_ptr<xbase_timer_driver_t> const & timer_driver,
-                       xobject_ptr_t<base::xvnodesrv_t> const & nodesvr)
+                       observer_ptr<base::xvnodesrv_t> const & nodesvr)
   : xtop_vnode{elect_main,
                group_info->node_element(vhost->host_node_id())->address().sharding_address(),
                group_info->node_element(vhost->host_node_id())->slot_id(),
@@ -301,14 +301,14 @@ void xtop_vnode::set_role_data() {
         auto const & contract_address = contract_data_pair.first;
         auto const & contract_data = contract_data_pair.second;
         
-        if (!common::has(type, contract_data.m_node_type)) {
+        if (!common::has(type, contract_data.node_type)) {
             continue;
         }
         if (!m_role_data.count(contract_address)) {
             m_role_data.insert(std::make_pair(contract_address, xvnode_role_config_t{contract_data, std::map<common::xaccount_address_t, uint64_t>()}));
         }
         if (disable_broadcasts) {
-            m_role_data[contract_address].m_role_config.m_broadcast_config.m_type = contract_runtime::xsniff_broadcast_type_t::invalid;
+            m_role_data[contract_address].m_role_config.broadcast_config.type = contract_runtime::xsniff_broadcast_type_t::invalid;
         }
     }
 #if defined(DEBUG)
@@ -316,13 +316,13 @@ void xtop_vnode::set_role_data() {
         xdbg("address: %s, driver type: %d", data_pair.first.c_str(), m_the_binding_driver->type());
         auto const & data = data_pair.second;
         xdbg("contract: %p, node type: %d, sniff type: %d, broadcast: %d, %d, timer: %d, action: %s",
-             &data.m_role_config.m_system_contract,
-             data.m_role_config.m_node_type,
-             data.m_role_config.m_sniff_type,
-             data.m_role_config.m_broadcast_config.m_type,
-             data.m_role_config.m_broadcast_config.m_policy,
-             data.m_role_config.m_timer_config.m_interval,
-             data.m_role_config.m_timer_config.m_action.c_str());
+             &data.m_role_config.system_contract,
+             data.m_role_config.node_type,
+             data.m_role_config.sniff_type,
+             data.m_role_config.broadcast_config.type,
+             data.m_role_config.broadcast_config.policy,
+             data.m_role_config.timer_config.interval,
+             data.m_role_config.timer_config.action.c_str());
     }
 #endif
 }
@@ -331,7 +331,7 @@ xvnode_sniff_config_t xtop_vnode::sniff_config() {
     xvnode_sniff_config_t config;
     for (auto const & data_pair : m_role_data) {
         auto const & data = data_pair.second;
-        auto const & sniff_type = data.m_role_config.m_sniff_type;
+        auto const & sniff_type = data.m_role_config.sniff_type;
         if (static_cast<uint32_t>(contract_runtime::xsniff_type_t::broadcast) & static_cast<uint32_t>(sniff_type)) {
             config.insert(std::make_pair(xvnode_sniff_event_type_t::broadcast,
                                          xvnode_sniff_event_config_t{xvnode_sniff_block_type_t::full_block, std::bind(&xtop_vnode::sniff_broadcast, this, std::placeholders::_1)}));
@@ -352,25 +352,25 @@ bool xtop_vnode::sniff_broadcast(xobject_ptr_t<base::xvblock_t> const & vblock) 
 }
 
 bool xtop_vnode::sniff_timer(xobject_ptr_t<base::xvblock_t> const & vblock) {
+    assert(common::xaccount_address_t{vblock->get_account()} == common::xaccount_address_t{sys_contract_beacon_timer_addr});
     auto const height = vblock->get_height();
     for (auto & role_data_pair : m_role_data) {
         auto const & contract_address = role_data_pair.first;
         auto const & config = role_data_pair.second.m_role_config;
-        if ((static_cast<uint32_t>(contract_runtime::xsniff_type_t::timer) & static_cast<uint32_t>(config.m_sniff_type)) == 0) {
+        if ((static_cast<uint32_t>(contract_runtime::xsniff_type_t::timer) & static_cast<uint32_t>(config.sniff_type)) == 0) {
             continue;
         }
         xdbg("[xtop_vnode::sniff_timer] block address: %s, height: %" PRIu64, vblock->get_account().c_str(), vblock->get_height());
-        assert(common::xaccount_address_t{vblock->get_account()} == common::xaccount_address_t{sys_contract_beacon_timer_addr});
         auto valid = is_valid_timer_call(contract_address, role_data_pair.second, height);
-        xdbg("[xtop_vnode::sniff_timer] contract address %s, interval: %u, valid: %d", contract_address.c_str(), config.m_timer_config.m_interval, valid);
+        xdbg("[xtop_vnode::sniff_timer] contract address %s, interval: %u, valid: %d", contract_address.c_str(), config.timer_config.interval, valid);
         if (!valid) {
             return false;
         }
         base::xstream_t stream(base::xcontext_t::instance());
         stream << height;
         std::string action_params = std::string((char *)stream.data(), stream.size());
-        xdbg("[xtop_vnode::sniff_timer] make tx, action: %s, params: %s", config.m_timer_config.m_action.c_str(), action_params.c_str());
-        call(contract_address, config.m_timer_config.m_action, action_params, vblock->get_cert()->get_gmtime());
+        xdbg("[xtop_vnode::sniff_timer] make tx, action: %s, params: %s", config.timer_config.action.c_str(), action_params.c_str());
+        call(contract_address, config.timer_config.action, action_params, vblock->get_cert()->get_gmtime());
     }
     return true;
 }
@@ -381,7 +381,7 @@ bool xtop_vnode::sniff_block(xobject_ptr_t<base::xvblock_t> const & vblock) {
     for (auto & role_data_pair : m_role_data) {
         auto const & contract_address = role_data_pair.first;
         auto const & config = role_data_pair.second.m_role_config;
-        if ((static_cast<uint32_t>(contract_runtime::xsniff_type_t::block) & static_cast<uint32_t>(config.m_sniff_type)) == 0) {
+        if ((static_cast<uint32_t>(contract_runtime::xsniff_type_t::block) & static_cast<uint32_t>(config.sniff_type)) == 0) {
             continue;
         }
 
@@ -411,7 +411,7 @@ bool xtop_vnode::sniff_block(xobject_ptr_t<base::xvblock_t> const & vblock) {
             auto const & table_address = contract::xcontract_address_map_t::calc_cluster_address(contract_address, table_id);
 
             XMETRICS_GAUGE(metrics::xmetircs_tag_t::contract_table_fullblock_event, 1);
-            call(table_address, config.m_block_config.m_action, action_params, vblock->get_cert()->get_gmtime());
+            call(table_address, config.block_config.action, action_params, vblock->get_cert()->get_gmtime());
         }
     }
     return true;
@@ -431,7 +431,7 @@ bool xtop_vnode::is_valid_timer_call(common::xaccount_address_t const & address,
         }
     }
 
-    auto const interval = data.m_role_config.m_timer_config.m_interval;
+    auto const interval = data.m_role_config.timer_config.interval;
     assert(interval > 0);
     if (interval != 0 && height != 0 && ((is_first_block && (height % 3) == 0) || (!is_first_block && (height % interval) == 0))) {
         xdbg("[xtop_vnode::is_valid_timer_call] param check pass, interval: %u, height: %llu, first_block: %d", interval, height, is_first_block);

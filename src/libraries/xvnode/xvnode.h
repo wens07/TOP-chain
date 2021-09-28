@@ -61,7 +61,7 @@ private:
     std::shared_ptr<txexecutor::xtransaction_prepare_mgr>      m_tx_prepare_mgr;
     std::shared_ptr<data::xtransaction_cache_t> m_transaction_cache;
 
-    xobject_ptr_t<base::xvnodesrv_t> m_nodesvr;
+    observer_ptr<base::xvnodesrv_t> m_nodesvr;
     observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
     
     struct xtop_vnode_role_config {
@@ -93,7 +93,7 @@ public:
                observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
                observer_ptr<xbase_timer_driver_t> const & timer_driver,
-               xobject_ptr_t<base::xvnodesrv_t> const & nodesvr);
+               observer_ptr<base::xvnodesrv_t> const & nodesvr);
 
     xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
                common::xsharding_address_t const & sharding_address,
@@ -115,7 +115,7 @@ public:
                observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
                observer_ptr<xbase_timer_driver_t> const & timer_driver,
-               xobject_ptr_t<base::xvnodesrv_t> const & nodesvr);
+               observer_ptr<base::xvnodesrv_t> const & nodesvr);
 
     std::shared_ptr<vnetwork::xvnetwork_driver_face_t> const & vnetwork_driver() const noexcept;
 
@@ -124,7 +124,7 @@ public:
     void start() override;
     void fade() override;
     void stop() override;
-    xvnode_sniff_config_t sniff_config();
+    xvnode_sniff_config_t sniff_config() override;
 
 private:
     void new_driver_added();

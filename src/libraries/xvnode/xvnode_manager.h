@@ -74,7 +74,7 @@ public:
                        observer_ptr<xtxpool_v2::xtxpool_face_t> const & txpool,
                        observer_ptr<election::cache::xdata_accessor_face_t> const & election_cache_data_accessor,
                        observer_ptr<xbase_timer_driver_t> const & timer_driver,
-                       xobject_ptr_t<base::xvnodesrv_t> const & nodesvr);
+                       observer_ptr<base::xvnodesrv_t> const & nodesvr);
 
     xtop_vnode_manager(observer_ptr<time::xchain_time_face_t> const & logic_timer,
                        observer_ptr<vnetwork::xvhost_face_t> const & vhost,
