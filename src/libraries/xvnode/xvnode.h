@@ -19,15 +19,14 @@
 #include "xrpc/xrpc_init.h"
 #include "xstore/xstore_face.h"
 #include "xsync/xsync_object.h"
-#include "xsystem_contract_runtime/xsystem_contract_manager.h"
 #include "xtxexecutor/xtransaction_prepare_mgr.h"
 #include "xtxpool_service_v2/xtxpool_service_face.h"
 #include "xtxpool_v2/xtxpool_face.h"
 #include "xunit_service/xcons_face.h"
 #include "xvnetwork/xvnetwork_driver_face.h"
 #include "xvnode/xbasic_vnode.h"
+#include "xvnode/xcomponents/xvnode_sniff/xvnode_sniff.h"
 #include "xvnode/xvnode_face.h"
-#include "xvnode/xvnode_sniff_config.h"
 
 #include <memory>
 
@@ -62,14 +61,9 @@ private:
     std::shared_ptr<data::xtransaction_cache_t> m_transaction_cache;
 
     observer_ptr<base::xvnodesrv_t> m_nodesvr;
-    observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
+    // observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
     
-    struct xtop_vnode_role_config {
-        contract_runtime::system::xcontract_deployment_data_t m_role_config;
-        std::map<common::xaccount_address_t, uint64_t> m_address_round;   // record address and timer round
-    };
-    using xvnode_role_config_t = xtop_vnode_role_config;
-    std::map<common::xaccount_address_t, xvnode_role_config_t> m_role_data; 
+    std::unique_ptr<xtop_vnode_sniff> m_sniff;
 
 public:
     xtop_vnode(xtop_vnode const &) = delete;
@@ -135,19 +129,6 @@ private:
     void sync_remove_vnet();
     void update_tx_cache_service();
     void update_block_prune();
-
-    void set_role_data();
-    bool sniff_broadcast(xobject_ptr_t<base::xvblock_t> const & vblock);
-    bool sniff_timer(xobject_ptr_t<base::xvblock_t> const & vblock);
-    bool sniff_block(xobject_ptr_t<base::xvblock_t> const & vblock);
-
-    bool is_valid_timer_call(common::xaccount_address_t const & address, xvnode_role_config_t & data, const uint64_t height) const;
-    void call(common::xaccount_address_t const & address, std::string const & action_name, std::string const & action_params, const uint64_t timestamp);
-    void call(common::xaccount_address_t const & source_address,
-              common::xaccount_address_t const & target_address,
-              std::string const & action_name,
-              std::string const & action_params,
-              uint64_t timestamp);
 };
 
 using xvnode_t = xtop_vnode;
