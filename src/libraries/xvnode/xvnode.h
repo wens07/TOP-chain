@@ -20,14 +20,13 @@
 #include "xstore/xstore_face.h"
 #include "xtxstore/xtxstore_face.h"
 #include "xsync/xsync_object.h"
-#include "xsystem_contract_runtime/xsystem_contract_manager.h"
 #include "xtxpool_service_v2/xtxpool_service_face.h"
 #include "xtxpool_v2/xtxpool_face.h"
 #include "xunit_service/xcons_face.h"
 #include "xvnetwork/xvnetwork_driver_face.h"
 #include "xvnode/xbasic_vnode.h"
+#include "xvnode/xcomponents/xvnode_sniff/xvnode_sniff.h"
 #include "xvnode/xvnode_face.h"
-#include "xvnode/xvnode_sniff_config.h"
 
 #include <memory>
 
@@ -59,7 +58,9 @@ private:
     xtxpool_service_v2::xtxpool_proxy_face_ptr m_txpool_face;
 
     observer_ptr<base::xvnodesrv_t> m_nodesvr;
-    observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
+    // observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
+
+    std::unique_ptr<xtop_vnode_sniff> m_sniff;
 
 public:
     xtop_vnode(xtop_vnode const &) = delete;
