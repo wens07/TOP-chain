@@ -4,9 +4,7 @@
 
 #include "xvnode/xvnode.h"
 
-#include "xdata/xfull_tableblock.h"
 #include "xmbus/xevent_role.h"
-#include "xvm/manager/xcontract_address_map.h"
 #include "xvm/manager/xcontract_manager.h"
 #include "xvnetwork/xvnetwork_driver.h"
 #include "xvnode/xerror/xerror.h"
@@ -58,8 +56,7 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
         m_vhost, m_election_cache_data_accessor,
         common::xnode_address_t{sharding_address, common::xaccount_election_address_t{m_vhost->host_node_id(), slot_id}, election_round, group_size, associated_blk_height},
         joined_election_round)}
-  , m_nodesvr{nodesvr}
-  , m_system_contract_manager{make_observer(contract_runtime::system::xsystem_contract_manager_t::instance())} {
+  , m_nodesvr{nodesvr} {
     bool is_edge_archive = common::has<common::xnode_type_t::storage>(m_the_binding_driver->type()) || common::has<common::xnode_type_t::edge>(m_the_binding_driver->type());
     bool is_frozen = common::has<common::xnode_type_t::frozen>(m_the_binding_driver->type());
     if (!is_edge_archive && !is_frozen) {
@@ -74,6 +71,8 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
     } else {
         xwarn("[virtual node] vnode %p create at address %s", this, m_the_binding_driver->address().to_string().c_str());
     }
+    m_sniff = make_unique<xtop_vnode_sniff>(
+        store, make_observer(contract_runtime::system::xsystem_contract_manager_t::instance()), make_observer(m_the_binding_driver), make_observer(m_txpool_face));
 }
 
 xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
@@ -287,5 +286,9 @@ void xtop_vnode::sync_remove_vnet() {
 //        return neighbors_xip2(ec);
 //    }
 //}
+
+xvnode_sniff_config_t xtop_vnode::sniff_config() {
+    return m_sniff->sniff_config();
+}
 
 NS_END2
