@@ -25,7 +25,7 @@
 #include "xunit_service/xcons_face.h"
 #include "xvnetwork/xvnetwork_driver_face.h"
 #include "xvnode/xbasic_vnode.h"
-#include "xvnode/xcomponents/xvnode_sniff/xvnode_sniff.h"
+#include "xvnode/xcomponents/xblock_sniffing/xvnode_sniff.h"
 #include "xvnode/xvnode_face.h"
 
 #include <memory>
