@@ -59,8 +59,7 @@ private:
     std::shared_ptr<txexecutor::xtransaction_prepare_mgr>      m_tx_prepare_mgr;
     std::shared_ptr<data::xtransaction_cache_t> m_transaction_cache;
 
-    // observer_ptr<contract_runtime::system::xsystem_contract_manager_t> m_system_contract_manager;
-    std::unique_ptr<xtop_vnode_sniff> m_sniff;
+    std::unique_ptr<components::sniffing::xvnode_sniff_t> m_sniff;
 
 public:
     xtop_vnode(xtop_vnode const &) = delete;
@@ -115,7 +114,7 @@ public:
     void start() override;
     void fade() override;
     void stop() override;
-    xvnode_sniff_config_t sniff_config() override;
+    components::sniffing::xvnode_sniff_config_t sniff_config() override;
 
 private:
     void new_driver_added();
