@@ -65,7 +65,7 @@ public:
 
 class xtx_action_info {
 public:
-    xtx_action_info(const std::string & source_addr, const std::string & source_action_name, const std::string & source_action_para, 
+    xtx_action_info(const std::string & source_addr, const std::string & source_action_name, const std::string & source_action_para,
                     const std::string & target_addr, const std::string & target_action_name, const std::string & target_action_para)
                   : m_source_addr(source_addr), m_source_action_name(source_action_name), m_source_action_para(source_action_para),
                     m_target_addr(target_addr), m_target_action_name(target_action_name), m_target_action_para(target_action_para)
@@ -114,13 +114,13 @@ class xtransaction_t : virtual public base::xrefcount_t {
     virtual int32_t     set_same_source_target_address(const std::string & addr) = 0;
     virtual void        set_last_trans_hash_and_nonce(uint256_t last_hash, uint64_t last_nonce) = 0;
     virtual void        set_fire_and_expire_time(uint16_t const expire_duration) = 0;
- 
+
     virtual void        set_source_addr(const std::string & addr) {}
     virtual void        set_source_action(const xaction_t & action) = 0;
     virtual void        set_target_action(const xaction_t & action) = 0;
     virtual void        set_authorization(const std::string & authorization) = 0;
     virtual void        set_len() = 0;
- 
+
     virtual int32_t     make_tx_create_user_account(const std::string & addr) = 0;
     virtual int32_t     make_tx_transfer(const data::xproperty_asset & asset) = 0;
     virtual int32_t     make_tx_run_contract(const data::xproperty_asset & asset_out, const std::string& function_name, const std::string& para) = 0;
@@ -148,7 +148,7 @@ class xtransaction_t : virtual public base::xrefcount_t {
  public: // header
     virtual int32_t    serialize_write(base::xstream_t & stream, bool is_write_without_len) const = 0;
     virtual int32_t    serialize_read(base::xstream_t & stream) = 0;
-    
+
     virtual void set_tx_type(uint16_t type) = 0;
     virtual uint16_t get_tx_type() const = 0;
     virtual void set_tx_len(uint16_t len) = 0;
