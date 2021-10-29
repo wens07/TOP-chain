@@ -25,7 +25,7 @@
 #include "xunit_service/xcons_face.h"
 #include "xvnetwork/xvnetwork_driver_face.h"
 #include "xvnode/xbasic_vnode.h"
-#include "xvnode/xcomponents/xblock_sniffing/xvnode_sniff.h"
+#include "xvnode/xcomponents/xblock_sniffing/xsniffer.h"
 #include "xvnode/xvnode_face.h"
 
 #include <memory>
@@ -59,7 +59,7 @@ private:
     std::shared_ptr<txexecutor::xtransaction_prepare_mgr>      m_tx_prepare_mgr;
     std::shared_ptr<data::xtransaction_cache_t> m_transaction_cache;
 
-    std::unique_ptr<components::sniffing::xvnode_sniff_t> m_sniff;
+    std::unique_ptr<components::sniffing::xsniffer_t> m_sniff;
 
 public:
     xtop_vnode(xtop_vnode const &) = delete;
@@ -107,14 +107,15 @@ public:
                observer_ptr<xbase_timer_driver_t> const & timer_driver,
                observer_ptr<base::xvnodesrv_t> const & nodesvr);
 
-    std::shared_ptr<vnetwork::xvnetwork_driver_face_t> const & vnetwork_driver() const noexcept;
-
     void synchronize() override;
 
     void start() override;
     void fade() override;
     void stop() override;
-    components::sniffing::xvnode_sniff_config_t sniff_config() const override;
+    components::sniffing::xsniffer_config_t sniff_config() const override;
+    
+    xtxpool_service_v2::xtxpool_proxy_face_ptr const & txpool_proxy() const override;
+    std::shared_ptr<vnetwork::xvnetwork_driver_face_t> const & vnetwork_driver() const override;
 
 private:
     void new_driver_added();

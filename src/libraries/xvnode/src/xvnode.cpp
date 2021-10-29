@@ -71,8 +71,8 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
     } else {
         xwarn("[virtual node] vnode %p create at address %s", this, m_the_binding_driver->address().to_string().c_str());
     }
-    m_sniff = make_unique<components::sniffing::xvnode_sniff_t>(
-        store, nodesvr, make_observer(contract_runtime::system::xsystem_contract_manager_t::instance()), make_observer(m_the_binding_driver), make_observer(m_txpool_face));
+    m_sniff = make_unique<components::sniffing::xsniffer_t>(
+        store, nodesvr, make_observer(contract_runtime::system::xsystem_contract_manager_t::instance()), make_observer(this));
 }
 
 xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
@@ -113,8 +113,12 @@ xtop_vnode::xtop_vnode(observer_ptr<elect::ElectMain> const & elect_main,
                timer_driver,
                nodesvr} {}
 
-std::shared_ptr<vnetwork::xvnetwork_driver_face_t> const & xtop_vnode::vnetwork_driver() const noexcept {
+std::shared_ptr<vnetwork::xvnetwork_driver_face_t> const & xtop_vnode::vnetwork_driver() const {
     return m_the_binding_driver;
+}
+
+xtxpool_service_v2::xtxpool_proxy_face_ptr const & xtop_vnode::txpool_proxy() const {
+    return m_txpool_face;
 }
 
 void xtop_vnode::synchronize() {
@@ -279,7 +283,7 @@ void xtop_vnode::sync_remove_vnet() {
 //    }
 //}
 
-components::sniffing::xvnode_sniff_config_t xtop_vnode::sniff_config() const {
+components::sniffing::xsniffer_config_t xtop_vnode::sniff_config() const {
     return m_sniff->sniff_config();
 }
 
