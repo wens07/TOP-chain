@@ -70,7 +70,7 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
 
     if (has_run_contract_tx) {
         for (auto const & tx : input_txs) {
-            xdbg("------>new vm, %s, %s, %d\n", tx->get_source_addr().c_str(), tx->get_target_addr().c_str(), tx->get_tx_subtype());
+            xdbg("------>new vm, %s, %s, %d", tx->get_source_addr().c_str(), tx->get_target_addr().c_str(), tx->get_tx_subtype());
         }
 
         xassert(!cs_para.get_table_account().empty());
@@ -84,9 +84,7 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
         auto tx_address = common::xaccount_address_t{prev_block->get_account()};
         auto _temp_header = base::xvblockbuild_t::build_proposal_header(prev_block.get());
         auto proposal_bstate = make_object_ptr<base::xvbstate_t>(*_temp_header.get(), *prev_bstate.get());
-        std::map<common::xaccount_address_t, observer_ptr<base::xvbstate_t>> state_pack;
-        state_pack.insert(std::make_pair(tx_address, make_observer(proposal_bstate.get())));
-        auto result = vm.execute(input_txs, state_pack, cs_para);
+        auto result = vm.execute(input_txs, make_observer(proposal_bstate.get()), cs_para);
 
         lightunit_build_para->set_fail_txs(result.failed_tx_assemble);
         lightunit_build_para->set_pack_txs(result.success_tx_assemble);
@@ -97,10 +95,8 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
 
         xlightunit_block_para_t lightunit_para;
         lightunit_para.set_input_txs(result.success_tx_assemble);
-        assert(result.bincode_pack.count(tx_address));
-        assert(result.binlog_pack.count(tx_address));
-        lightunit_para.set_fullstate_bin(result.bincode_pack.at(tx_address));
-        lightunit_para.set_binlog(result.binlog_pack.at(tx_address));
+        lightunit_para.set_fullstate_bin(result.bincode);
+        lightunit_para.set_binlog(result.binlog);
 
         base::xreceiptid_state_ptr_t receiptid_state = lightunit_build_para->get_receiptid_state();
         alloc_tx_receiptid(result.success_tx_assemble, receiptid_state);
@@ -110,7 +106,7 @@ xblock_ptr_t        xlightunit_builder_t::build_block(const xblock_ptr_t & prev_
         return proposal_unit;
     } else {
         for (auto const & tx : input_txs) {
-            xdbg("------>old vm, %s, %s, %d\n", tx->get_source_addr().c_str(), tx->get_target_addr().c_str(), tx->get_tx_subtype());
+            xdbg("------>old vm, %s, %s, %d", tx->get_source_addr().c_str(), tx->get_target_addr().c_str(), tx->get_tx_subtype());
         }
         txexecutor::xbatch_txs_result_t exec_result;
         int exec_ret = txexecutor::xtransaction_executor::exec_batch_txs(prev_block.get(), prev_bstate, cs_para, input_txs, exec_result);
