@@ -11,13 +11,14 @@
 namespace top {
     namespace chain_upgrade {
 
-        xchain_fork_config_t      xtop_chain_fork_config_center::m_fork_config;
+        xchain_fork_config_t xtop_chain_fork_config_center::m_fork_config;
 
 #if defined(XCHAIN_FORKED_BY_DEFAULT)
         xchain_fork_config_t  mainnet_chain_config{
             xfork_point_t{xfork_point_type_t::logic_time, 0, "block fork point for table receipt"},
             xfork_point_t{xfork_point_type_t::logic_time, 0, "table statistic info fork point"},
             xfork_point_t{xfork_point_type_t::logic_time, 0, "table receipt protocol fork point"},
+            xfork_point_t{xfork_point_type_t::logic_time, 0, "enable new system contract framework"},
         };
 
         // !!!change!!! fork time for galileo
@@ -25,6 +26,7 @@ namespace top {
             xfork_point_t{xfork_point_type_t::logic_time, 0, "block fork point for table receipt"},
             xfork_point_t{xfork_point_type_t::logic_time, 0, "table statistic info fork point"},
             xfork_point_t{xfork_point_type_t::logic_time, 0, "table receipt protocol fork point"},
+            xfork_point_t{xfork_point_type_t::logic_time, 0, "enable new system contract framework"},
         };
 
         // !!!change!!! fork time for local develop net
@@ -32,19 +34,22 @@ namespace top {
             xfork_point_t{xfork_point_type_t::logic_time, 0, "block fork point for table receipt"},
             xfork_point_t{xfork_point_type_t::logic_time, 0, "table statistic info fork point"},
             xfork_point_t{xfork_point_type_t::logic_time, 0, "table receipt protocol fork point"},
+            xfork_point_t{xfork_point_type_t::logic_time, 0, "enable new system contract framework"},
         };
 #else   // #if defined(XCHAIN_FORKED_BY_DEFAULT)
-        xchain_fork_config_t  mainnet_chain_config{
+        xchain_fork_config_t mainnet_chain_config{
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "block fork point for table receipt"},
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "table statistic info fork point"},
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "table receipt protocol fork point"},
+            xfork_point_t{xfork_point_type_t::logic_time, 10000000, "enable new system contract framework"},
         };
 
         // !!!change!!! fork time for galileo
-        xchain_fork_config_t  testnet_chain_config{
+        xchain_fork_config_t testnet_chain_config{
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "block fork point for table receipt"},
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "table statistic info fork point"},
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "table receipt protocol fork point"},
+            xfork_point_t{xfork_point_type_t::logic_time, 10000000, "enable new system contract framework"},
         };
 
         // !!!change!!! fork time for local develop net
@@ -52,6 +57,7 @@ namespace top {
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "block fork point for table receipt"},
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "table statistic info fork point"},
             xfork_point_t{xfork_point_type_t::logic_time, 10000000, "table receipt protocol fork point"},
+            xfork_point_t{xfork_point_type_t::logic_time, 10000000, "enable new system contract framework"},
         };
 #endif  // #if defined(XCHAIN_FORKED_BY_DEFAULT)
 
