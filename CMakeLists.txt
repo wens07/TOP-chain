@@ -402,6 +402,10 @@ if (ENABLE_METRICS_DATAOBJECT)
     add_definitions(-DENABLE_METRICS_DATAOBJECT)
 endif()
 
+if (${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
+    add_definitions(-DRELEASEDEBINFO)
+endif()
+
 if (${CMAKE_SYSTEM_NAME} STREQUAL Linux OR ${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
 #  find_package(PkgConfig REQUIRED)
 

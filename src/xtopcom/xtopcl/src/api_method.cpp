@@ -84,7 +84,7 @@ string ApiMethod::get_account_from_daemon() {
 int ApiMethod::get_eth_file(std::string& account) {
     if (top::base::xvaccount_t::get_addrtype_from_account(account) == top::base::enum_vaccount_addr_type_secp256k1_eth_user_account)
         std::transform(account.begin() + 1, account.end(), account.begin() + 1, ::tolower);
-    std::vector<std::string> files = xChainSDK::xcrypto::scan_key_dir(g_keystore_dir);    
+    std::vector<std::string> files = xChainSDK::xcrypto::scan_key_dir(g_keystore_dir);
     for (int i = 0; i < (int)files.size(); i++)
     {
         std::string file = files[i];
@@ -521,7 +521,7 @@ void ApiMethod::import_account(const int32_t & pf, std::ostringstream & out_str)
     std::string path = create_new_keystore(cache_pw, dir, pri_str);
     if (path.empty())
         return;
-    
+
     out_str << "Import successfully.\n" << std::endl;
     out_str << "Account Address: " << g_userinfo.account << std::endl;
     out_str << "Public-Key: " << top::utl::xcrypto_util::get_base64_public_key(g_userinfo.private_key) << "\n\n";
@@ -3890,7 +3890,7 @@ void ApiMethod::change_trans_mode(bool use_http) {
         trans_base::s_defaule_mode = TransMode::WS;
         // std::cout << "Using trans mode - WS: " << g_server_host_port  << std::endl;
     }
-#ifdef DEBUG
+#if  defined(DEBUG) || defined(RELEASEDEBINFO)
     // std::cout << "[debug]edge_domain_name old: " << g_edge_domain << std::endl;
     char* topio_home = getenv("TOPIO_HOME");
 //    std::cout <<"data_dir:" << topio_home << std::endl;
@@ -3979,8 +3979,8 @@ void ApiMethod::block_prune(std::string & prune_enable, std::ostringstream & out
     os << new_sw.write(key_info_js);
     os.close();
     if (prune_enable == "off")
-        out_str << "Set auto prune data Off successfully." << std::endl;    
+        out_str << "Set auto prune data Off successfully." << std::endl;
     else if (prune_enable == "on")
-        out_str << "Set auto prune data On successfully." << std::endl;    
+        out_str << "Set auto prune data On successfully." << std::endl;
 }
 }  // namespace xChainSDK
