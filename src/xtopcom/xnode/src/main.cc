@@ -1230,15 +1230,13 @@ int StartNode(config_t& config) {
         topio_config.load_config_file(config.config_file);
         config.node_id =  topio_config.get_string("node_id");
         config.pub_key = topio_config.get_string("public_key");
-        std::cout << "node_id: " << config.node_id << "\n";
-        std::cout << "public_key: " << config.pub_key << "\n";
     }
 
 
 #ifdef DEBUG
     std::cout << "datadir:       " << config.datadir << std::endl
-        << "node_id:       " << config.node_id << std::endl
-        << "public_key:    " << config.pub_key << std::endl;
+              << "node_id:       " << config.node_id << std::endl
+              << "public_key:    " << config.pub_key << std::endl;
 #endif
 
 

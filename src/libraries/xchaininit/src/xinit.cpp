@@ -1,61 +1,62 @@
-#include <string>
-#include <unistd.h>
-#include <unordered_map>
-#include <fstream>
-
-#include "xdb/xdb_factory.h"
-#include "xstore/xstore.h"
-#include "xbase/xcontext.h"
-#include "xcommon/xnode_type.h"
-#include "xrpc/xrpc_init.h"
 #include "xchaininit/xinit.h"
-#include "xchaininit/xconfig.h"
+
+#include "xapplication/xapplication.h"
+#include "xbase/xcontext.h"
+#include "xbase/xhash.h"
+#include "xbase/xutl.h"
+#include "xchaininit/admin_http.h"
 #include "xchaininit/xchain_options.h"
 #include "xchaininit/xchain_params.h"
-#include "xbase/xutl.h"
-#include "xbase/xhash.h"
-#include "xpbase/base/top_utils.h"
+#include "xchaininit/xconfig.h"
+#include "xcommon/xnode_type.h"
+#include "xconfig/xconfig_register.h"
+#include "xconfig/xpredefined_configurations.h"
 #include "xdata/xchain_param.h"
 #include "xdata/xmemcheck_dbg.h"
-#include "xconfig/xconfig_register.h"
-#include "xloader/xconfig_offchain_loader.h"
+#include "xdb/xdb_factory.h"
 #include "xloader/xconfig_genesis_loader.h"
-#include "xmutisig/xmutisig.h"
+#include "xloader/xconfig_offchain_loader.h"
 #include "xmetrics/xmetrics.h"
-#include "xapplication/xapplication.h"
-#include "xchaininit/admin_http.h"
+#include "xmutisig/xmutisig.h"
+#include "xpbase/base/top_utils.h"
+#include "xrpc/xrpc_init.h"
+#include "xstore/xstore.h"
+#include "xtopcl/include/api_method.h"
 #include "xtopcl/include/topcl.h"
 #include "xverifier/xverifier_utl.h"
-#include "xtopcl/include/api_method.h"
-#include "xconfig/xpredefined_configurations.h"
+
+#include <unistd.h>
+
+#include <fstream>
+#include <string>
+#include <unordered_map>
 
 // nlohmann_json
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
-
-namespace top{
+namespace top {
 
 bool g_topchain_init_finish_flag = false;
 
-class xtop_hash_t : public base::xhashplugin_t
-{
+class xtop_hash_t : public base::xhashplugin_t {
 public:
     xtop_hash_t()
-        :base::xhashplugin_t(-1) //-1 = support every hash types
+      : base::xhashplugin_t(-1)  //-1 = support every hash types
     {
     }
+
 private:
     xtop_hash_t(const xtop_hash_t &) = delete;
-    xtop_hash_t & operator = (const xtop_hash_t &) = delete;
+    xtop_hash_t & operator=(const xtop_hash_t &) = delete;
+
 public:
     virtual ~xtop_hash_t(){};
-    virtual const std::string hash(const std::string & input,enum_xhash_type type) override
-    {
+    virtual const std::string hash(const std::string & input, enum_xhash_type type) override {
         XMETRICS_GAUGE(metrics::cpu_hash_256_xhashplugin_t_calc, 1);
         xassert(type == enum_xhash_type_sha2_256);
         auto hash = utl::xsha2_256_t::digest(input);
-        return std::string(reinterpret_cast<char*>(hash.data()), hash.size());
+        return std::string(reinterpret_cast<char *>(hash.data()), hash.size());
     }
 };
 
@@ -76,8 +77,7 @@ static bool create_rootblock(const std::string & config_file) {
     return true;
 }
 
-bool set_auto_prune_switch(const std::string& prune)
-{
+bool set_auto_prune_switch(const std::string & prune) {
     std::string prune_enable = prune;
     top::base::xstring_utl::tolower_string(prune_enable);
     if (prune_enable == "on")
@@ -87,7 +87,7 @@ bool set_auto_prune_switch(const std::string& prune)
     return true;
 }
 
-int topchain_init(const std::string& config_file, const std::string& config_extra) {
+int topchain_init(const std::string & config_file, const std::string & config_extra) {
     using namespace std;
     using namespace base;
     using namespace network;
@@ -98,13 +98,12 @@ int topchain_init(const std::string& config_file, const std::string& config_extr
     // init up
     setup_options();
 
-    //using top::elect::xbeacon_xelect_imp;
+    // using top::elect::xbeacon_xelect_imp;
     auto hash_plugin = new xtop_hash_t();
-
 
     g_topchain_init_finish_flag = false;
 
-    auto& config_center = top::config::xconfig_register_t::get_instance();
+    auto & config_center = top::config::xconfig_register_t::get_instance();
     auto offchain_loader = std::make_shared<loader::xconfig_offchain_loader_t>(config_file, config_extra);
     config_center.add_loader(offchain_loader);
     if (!config_center.load()) {
@@ -114,17 +113,17 @@ int topchain_init(const std::string& config_file, const std::string& config_extr
     config_center.remove_loader(offchain_loader);
     config_center.init_static_config();
 
-
     xchain_params chain_params;
     // attention: put chain_params.initconfig_using_configcenter behind config_center
     chain_params.initconfig_using_configcenter();
-    auto& user_params = data::xuser_params::get_instance();
+    auto & user_params = data::xuser_params::get_instance();
     global_node_id = user_params.account.value();
     global_node_signkey = DecodePrivateString(user_params.signkey);
 
 #ifdef CONFIG_CHECK
     // config check
-    if (!user_params.is_valid()) return 1;
+    if (!user_params.is_valid())
+        return 1;
 #endif
 
     config_center.dump();
@@ -141,14 +140,14 @@ int topchain_init(const std::string& config_file, const std::string& config_extr
     std::cout << "=== xtopchain start here ===" << std::endl;
     std::cout << "=== xbase info:" << xbase_info << " ===" << std::endl;
 
-    //wait log path created,and init metrics
+    // wait log path created,and init metrics
     XMETRICS_INIT2(log_path);
 
-    //init data_path into xvchain instance
-    //init auto_prune feature
+    // init data_path into xvchain instance
+    // init auto_prune feature
     set_auto_prune_switch(XGET_CONFIG(auto_prune_data));
     xkinfo("topchain_init init auto_prune_switch= %d", base::xvchain_t::instance().is_auto_prune_enable());
-        
+
     MEMCHECK_INIT();
     if (false == create_rootblock(config_file)) {
         return 1;
@@ -171,7 +170,7 @@ int topchain_init(const std::string& config_file, const std::string& config_extr
 #elif __unix__
         webroot = "/var";
 #else
-#error  "Unknown compiler"
+#    error "Unknown compiler"
 #endif
 
         std::cout << "will start admin http, local_ip:" << admin_http_local_ip << " port:" << admin_http_port << " webroot:" << webroot << std::endl;
@@ -181,19 +180,15 @@ int topchain_init(const std::string& config_file, const std::string& config_extr
     }
     // end admin http service
 
-    //xmutisig::xmutisig::init_openssl();
-    application::xapplication_t app{
-        user_params.account,
-        xpublic_key_t{ user_params.publickey },
-        user_params.signkey
-    };
+    // xmutisig::xmutisig::init_openssl();
+    application::xapplication_t app{user_params.account, xpublic_key_t{user_params.publickey}, user_params.signkey};
     app.start();
     xinfo("==== app start done ===");
 
     std::cout << std::endl
-        << "#####################################################################" << std::endl
-        << "xtopchain start ok" << std::endl
-        << "#####################################################################" << std::endl;
+              << "#####################################################################" << std::endl
+              << "xtopchain start ok" << std::endl
+              << "#####################################################################" << std::endl;
 
     xinfo("#####################################################################");
     xinfo("xtopchain start ok");
@@ -219,7 +214,7 @@ int topchain_init(const std::string& config_file, const std::string& config_extr
 //     user_params.node_role_type = static_cast<top::common::xrole_type_t>(role_type);
 // }
 
-bool load_bwlist_content(std::string const& config_file, std::map<std::string, std::string>& result) {
+bool load_bwlist_content(std::string const & config_file, std::map<std::string, std::string> & result) {
     if (config_file.empty()) {
         xwarn("load local black/white list error!");
         return false;
@@ -239,22 +234,21 @@ bool load_bwlist_content(std::string const& config_file, std::map<std::string, s
         return false;
     }
 
-
-    xJson::Value  json_root;
-    xJson::Reader  reader;
+    xJson::Value json_root;
+    xJson::Reader reader;
     bool ret = reader.parse(json_content, json_root);
     if (!ret) {
         xwarn("parse config file %s failed", config_file.c_str());
         return false;
     }
 
-
     auto const members = json_root.getMemberNames();
-    for(auto const& member: members) {
+    for (auto const & member : members) {
         if (json_root[member].isArray()) {
             for (unsigned int i = 0; i < json_root[member].size(); ++i) {
                 try {
-                    if ( top::xverifier::xverifier_success != top::xverifier::xtx_utl::address_is_valid(json_root[member][i].asString())) return false;
+                    if (top::xverifier::xverifier_success != top::xverifier::xtx_utl::address_is_valid(json_root[member][i].asString()))
+                        return false;
                 } catch (...) {
                     xwarn("parse config file %s failed", config_file.c_str());
                     return false;
@@ -266,25 +260,29 @@ bool load_bwlist_content(std::string const& config_file, std::map<std::string, s
             xwarn("parse config file %s failed", config_file.c_str());
             return false;
         }
-
     }
 
     xdbg("load black/whitelist successfully!");
     return true;
-
 }
 
-bool check_miner_info(const std::string &pub_key, const std::string &node_id) {
+bool check_miner_info(const std::string & pub_key, const std::string & node_id) {
     g_userinfo.account = node_id;
     if (top::base::xvaccount_t::get_addrtype_from_account(g_userinfo.account) == top::base::enum_vaccount_addr_type_secp256k1_eth_user_account)
-        std::transform(g_userinfo.account.begin() + 1, g_userinfo.account.end(), g_userinfo.account.begin() + 1, ::tolower);    
+        std::transform(g_userinfo.account.begin() + 1, g_userinfo.account.end(), g_userinfo.account.begin() + 1, ::tolower);
     top::xtopcl::xtopcl xtop_cl;
     std::string result;
     xtop_cl.api.change_trans_mode(true);
     std::vector<std::string> param_list;
-    std::string query_cmdline    = "system queryNodeInfo " + g_userinfo.account;
+    std::string query_cmdline = "system queryNodeInfo " + g_userinfo.account;
+#if defined(Debug)
+    std::cout << "[debug][topio::check_miner_info] accout addr: " << g_userinfo.account.c_str() << "\n";
+#endif
     xtop_cl.parser_command(query_cmdline, param_list);
     xtop_cl.do_command(param_list, result);
+#if defined(Debug)
+    std::cout << "[debug][topio::check_miner_info] result: " << result.c_str() << "\n";
+#endif
     auto query_find = result.find("account_addr");
     if (query_find == std::string::npos) {
         std::cout << g_userinfo.account << " account has not registered miner." << std::endl;
@@ -300,16 +298,14 @@ bool check_miner_info(const std::string &pub_key, const std::string &node_id) {
             auto data = response["data"];
             auto node_sign_key = data["node_sign_key"].get<std::string>();
             if (node_sign_key != pub_key) {
-                std::cout << "The minerkey does not match miner account." << std::endl
-                    << g_userinfo.account << " account's miner key is "
-                    << node_sign_key << std::endl;
+                std::cout << "The minerkey does not match miner account." << std::endl << g_userinfo.account << " account's miner key is " << node_sign_key << std::endl;
                 return false;
             }
 
             // account registered and pub_key matched
             return true;
         }
-    } catch (json::parse_error& e) {
+    } catch (json::parse_error & e) {
         std::cout << "json parse error:" << result << std::endl;
         return false;
     }
@@ -329,14 +325,14 @@ void check_miner(const std::string &pub_key, const std::string &node_id) {
 }
 */
 
-int topchain_noparams_init(const std::string& pub_key, const std::string& pri_key, const std::string& node_id, const std::string& datadir, const std::string& config_extra) {
+int topchain_noparams_init(const std::string & pub_key, const std::string & pri_key, const std::string & node_id, const std::string & datadir, const std::string & config_extra) {
     using namespace std;
     using namespace base;
     using namespace network;
     using namespace vnetwork;
     using namespace store;
     using namespace rpc;
-    //using top::elect::xbeacon_xelect_imp;
+    // using top::elect::xbeacon_xelect_imp;
 
     auto hash_plugin = new xtop_hash_t();
     std::string chain_db_path;
@@ -355,7 +351,7 @@ int topchain_noparams_init(const std::string& pub_key, const std::string& pri_ke
     std::string mk_cmd("mkdir -m 0755 -p ");
     mk_cmd += log_path;
 
-    FILE *output = popen(mk_cmd.c_str(), "r");
+    FILE * output = popen(mk_cmd.c_str(), "r");
     if (!output) {
         printf("popen(%s) failed ", mk_cmd.c_str());
         return 1;
@@ -363,13 +359,11 @@ int topchain_noparams_init(const std::string& pub_key, const std::string& pri_ke
     pclose(output);
 #endif
 
-
     XMETRICS_INIT2(log_path);
 
-
-    std::cout << "xnode config initializing..."  << std::endl;
-    xinfo("xnode config initializing...") ;
-    auto& config_center = top::config::xconfig_register_t::get_instance();
+    std::cout << "xnode config initializing..." << std::endl;
+    xinfo("xnode config initializing...");
+    auto & config_center = top::config::xconfig_register_t::get_instance();
     // only for cofig extra
     auto offchain_loader = std::make_shared<loader::xconfig_offchain_loader_t>("", config_extra);
     config_center.add_loader(offchain_loader);
@@ -377,9 +371,9 @@ int topchain_noparams_init(const std::string& pub_key, const std::string& pri_ke
     config_center.remove_loader(offchain_loader);
     config_center.init_static_config();
 
-    config_center.set("node_id",    std::string(node_id));
+    config_center.set("node_id", std::string(node_id));
     config_center.set("public_key", pub_key);
-    config_center.set("sign_key",   pri_key);
+    config_center.set("sign_key", pri_key);
     config_center.set("datadir", datadir);
     config_center.set(config::xdb_path_configuration_t::name, chain_db_path);
     config_center.set(config::xlog_path_configuration_t::name, log_path);
@@ -411,10 +405,10 @@ int topchain_noparams_init(const std::string& pub_key, const std::string& pri_ke
     xchain_params chain_params;
     // attention: put chain_params.initconfig_using_configcenter behind config_center
     chain_params.initconfig_using_configcenter();
-    auto& user_params = data::xuser_params::get_instance();
+    auto & user_params = data::xuser_params::get_instance();
     global_node_id = user_params.account.value();
 
-    global_node_signkey = DecodePrivateString(user_params.signkey);    
+    global_node_signkey = DecodePrivateString(user_params.signkey);
 
 #ifdef CONFIG_CHECK
     // config check
@@ -436,17 +430,17 @@ int topchain_noparams_init(const std::string& pub_key, const std::string& pri_ke
     xinfo("=== xtopchain start here with noparams ===");
     std::cout << "xnode start begin..." << std::endl;
 
-    //init data_path into xvchain instance
+    // init data_path into xvchain instance
     base::xvchain_t::instance().set_data_dir_path(datadir);
-    //init auto_prune feature
+    // init auto_prune feature
     set_auto_prune_switch(XGET_CONFIG(auto_prune_data));
     xkinfo("topchain_noparams_init auto_prune_switch= %d", base::xvchain_t::instance().is_auto_prune_enable());
-        
+
     // load bwlist
     std::map<std::string, std::string> bwlist;
     auto ret = load_bwlist_content(bwlist_path, bwlist);
     if (ret) {
-        for (auto const& item: bwlist) {
+        for (auto const & item : bwlist) {
             xdbg("key %s, value %s", item.first.c_str(), item.second.c_str());
             config_center.set(item.first, item.second);
         }
@@ -481,9 +475,8 @@ int topchain_noparams_init(const std::string& pub_key, const std::string& pri_ke
 #elif __unix__
         webroot = "/var";
 #else
-#error  "Unknown compiler"
+#    error "Unknown compiler"
 #endif
-
 
         std::cout << "start admin http, local_ip:" << admin_http_local_ip << " port:" << admin_http_port << " webroot:" << webroot << std::endl;
         xinfo("start admin http, local_ip:%s port:%d webroot:%s", admin_http_local_ip.c_str(), admin_http_port, webroot.c_str());
@@ -492,18 +485,14 @@ int topchain_noparams_init(const std::string& pub_key, const std::string& pri_ke
     }
     // end admin http service
 
-    //xmutisig::xmutisig::init_openssl();
-    application::xapplication_t app{
-        user_params.account,
-        xpublic_key_t{ user_params.publickey },
-        user_params.signkey
-    };
+    // xmutisig::xmutisig::init_openssl();
+    application::xapplication_t app{user_params.account, xpublic_key_t{user_params.publickey}, user_params.signkey};
     app.start();
 
     std::cout << std::endl
-        << "================================================" << std::endl
-        << "topio start ok" << std::endl
-        << "================================================" << std::endl;
+              << "================================================" << std::endl
+              << "topio start ok" << std::endl
+              << "================================================" << std::endl;
 
     xinfo("================================================");
     xinfo("topio start ok");
@@ -520,4 +509,4 @@ int topchain_noparams_init(const std::string& pub_key, const std::string& pri_ke
     return 0;
 }
 
-}
+}  // namespace top
